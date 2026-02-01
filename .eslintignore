@@ -1,0 +1,44 @@
+# 依存関係
+node_modules/
+.pnp.js
+
+# ビルド出力
+.next/
+out/
+build/
+dist/
+
+# テスト
+coverage/
+.nyc_output/
+
+# 環境変数
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Prisma生成ファイル
+prisma/generated/
+
+# ログ
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# その他
+.DS_Store
+*.pem
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# 設定ファイル
+next.config.js
+jest.config.js
+postcss.config.js
+tailwind.config.js

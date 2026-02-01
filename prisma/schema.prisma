@@ -1,0 +1,177 @@
+// Prisma Schema for 営業日報システム
+// Generated from ER_DIAGRAM.md
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ================================
+// 営業マスタ (Sales)
+// ================================
+model Sales {
+  id         Int      @id @default(autoincrement()) @map("営業ID")
+  name       String   @db.VarChar(100) @map("営業名")
+  department String?  @db.VarChar(100) @map("所属部署")
+  position   String?  @db.VarChar(50) @map("役職")
+  email      String   @unique @db.VarChar(255) @map("メールアドレス")
+  password   String   @db.VarChar(255) @map("パスワード")
+  managerId  Int?     @map("上長ID")
+  createdAt  DateTime @default(now()) @map("登録日時")
+  updatedAt  DateTime @updatedAt @map("更新日時")
+
+  // 自己参照リレーション: 上長 - 部下
+  manager      Sales?        @relation("ManagerSubordinates", fields: [managerId], references: [id], onDelete: SetNull)
+  subordinates Sales[]       @relation("ManagerSubordinates")
+
+  // 1営業 : 多日報
+  dailyReports DailyReport[]
+
+  // 1営業 : 多コメント
+  comments Comment[]
+
+  @@map("営業マスタ")
+}
+
+// ================================
+// 顧客マスタ (Customer)
+// ================================
+model Customer {
+  id            Int      @id @default(autoincrement()) @map("顧客ID")
+  name          String   @db.VarChar(200) @map("顧客名")
+  contactPerson String?  @db.VarChar(100) @map("担当者名")
+  phone         String?  @db.VarChar(20) @map("電話番号")
+  address       String?  @db.VarChar(255) @map("住所")
+  industry      String?  @db.VarChar(100) @map("業種")
+  createdAt     DateTime @default(now()) @map("登録日時")
+  updatedAt     DateTime @updatedAt @map("更新日時")
+
+  // 1顧客 : 多訪問記録
+  visitRecords VisitRecord[]
+
+  @@map("顧客マスタ")
+}
+
+// ================================
+// 日報 (DailyReport)
+// ================================
+model DailyReport {
+  id         Int      @id @default(autoincrement()) @map("日報ID")
+  salesId    Int      @map("営業ID")
+  reportDate DateTime @db.Date @map("報告日")
+  createdAt  DateTime @default(now()) @map("作成日時")
+  updatedAt  DateTime @updatedAt @map("更新日時")
+
+  // 多日報 : 1営業
+  sales Sales @relation(fields: [salesId], references: [id], onDelete: Cascade)
+
+  // 1日報 : 多訪問記録
+  visitRecords VisitRecord[]
+
+  // 1日報 : 多Problem
+  problems Problem[]
+
+  // 1日報 : 多Plan
+  plans Plan[]
+
+  // ユニーク制約: 同じ営業が同じ日付に複数の日報を作成できない
+  @@unique([salesId, reportDate])
+  @@map("日報")
+}
+
+// ================================
+// 訪問記録 (VisitRecord)
+// ================================
+model VisitRecord {
+  id             Int      @id @default(autoincrement()) @map("訪問記録ID")
+  dailyReportId  Int      @map("日報ID")
+  customerId     Int      @map("顧客ID")
+  visitContent   String   @db.Text @map("訪問内容")
+  visitStartTime String?  @db.VarChar(8) @map("訪問開始時刻") // HH:MM:SS形式
+  visitEndTime   String?  @db.VarChar(8) @map("訪問終了時刻") // HH:MM:SS形式
+  createdAt      DateTime @default(now()) @map("作成日時")
+
+  // 多訪問記録 : 1日報 (日報削除時にカスケード削除)
+  dailyReport DailyReport @relation(fields: [dailyReportId], references: [id], onDelete: Cascade)
+
+  // 多訪問記録 : 1顧客
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
+
+  @@map("訪問記録")
+}
+
+// ================================
+// Problem (課題・相談)
+// ================================
+model Problem {
+  id            Int      @id @default(autoincrement()) @map("ProblemID")
+  dailyReportId Int      @map("日報ID")
+  content       String   @db.Text @map("内容")
+  createdAt     DateTime @default(now()) @map("作成日時")
+  updatedAt     DateTime @updatedAt @map("更新日時")
+
+  // 多Problem : 1日報 (日報削除時にカスケード削除)
+  dailyReport DailyReport @relation(fields: [dailyReportId], references: [id], onDelete: Cascade)
+
+  // 1Problem : 多コメント
+  comments Comment[] @relation("ProblemComments")
+
+  @@map("Problem")
+}
+
+// ================================
+// Plan (明日の予定)
+// ================================
+model Plan {
+  id            Int      @id @default(autoincrement()) @map("PlanID")
+  dailyReportId Int      @map("日報ID")
+  content       String   @db.Text @map("内容")
+  createdAt     DateTime @default(now()) @map("作成日時")
+  updatedAt     DateTime @updatedAt @map("更新日時")
+
+  // 多Plan : 1日報 (日報削除時にカスケード削除)
+  dailyReport DailyReport @relation(fields: [dailyReportId], references: [id], onDelete: Cascade)
+
+  // 1Plan : 多コメント
+  comments Comment[] @relation("PlanComments")
+
+  @@map("Plan")
+}
+
+// ================================
+// コメント対象区分 (Enum)
+// ================================
+enum CommentTargetType {
+  PROBLEM // Problemへのコメント
+  PLAN    // Planへのコメント
+
+  @@map("対象区分")
+}
+
+// ================================
+// コメント (Comment)
+// ================================
+model Comment {
+  id          Int               @id @default(autoincrement()) @map("コメントID")
+  targetType  CommentTargetType @map("対象区分")
+  targetId    Int               @map("対象ID")
+  commenterId Int               @map("コメント者ID")
+  content     String            @db.Text @map("コメント内容")
+  createdAt   DateTime          @default(now()) @map("作成日時")
+
+  // 多コメント : 1営業
+  commenter Sales @relation(fields: [commenterId], references: [id], onDelete: Cascade)
+
+  // Problemへのコメント (多コメント : 1Problem)
+  problem Problem? @relation("ProblemComments", fields: [targetId], references: [id], onDelete: Cascade)
+
+  // Planへのコメント (多コメント : 1Plan)
+  plan Plan? @relation("PlanComments", fields: [targetId], references: [id], onDelete: Cascade)
+
+  @@index([targetType, targetId])
+  @@map("コメント")
+}

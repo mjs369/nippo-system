@@ -1,0 +1,34 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# コミットメッセージの形式をチェック
+commit_msg_file=$1
+commit_msg=$(cat "$commit_msg_file")
+
+# 正規表現パターン: <type>: <subject>
+pattern="^(feat|fix|docs|style|refactor|test|chore|perf|ci|build|revert)(\(.+\))?: .{1,100}"
+
+if ! echo "$commit_msg" | grep -qE "$pattern"; then
+  echo "❌ コミットメッセージの形式が正しくありません"
+  echo ""
+  echo "正しい形式:"
+  echo "  <type>: <subject>"
+  echo ""
+  echo "利用可能なtype:"
+  echo "  feat:     新機能"
+  echo "  fix:      バグ修正"
+  echo "  docs:     ドキュメント"
+  echo "  style:    フォーマット"
+  echo "  refactor: リファクタリング"
+  echo "  test:     テスト追加・修正"
+  echo "  chore:    ビルド、設定変更"
+  echo "  perf:     パフォーマンス改善"
+  echo "  ci:       CI設定"
+  echo "  build:    ビルドシステム"
+  echo "  revert:   コミットの取り消し"
+  echo ""
+  echo "例:"
+  echo "  feat: 日報一覧画面に検索機能を追加"
+  echo "  fix: 訪問記録削除時のエラーを修正"
+  exit 1
+fi

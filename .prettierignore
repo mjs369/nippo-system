@@ -1,0 +1,26 @@
+# 依存関係
+node_modules/
+.pnp.js
+
+# ビルド出力
+.next/
+out/
+build/
+dist/
+
+# テスト
+coverage/
+.nyc_output/
+
+# Prisma生成ファイル
+prisma/generated/
+
+# ログ
+*.log
+
+# その他
+.DS_Store
+*.pem
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
