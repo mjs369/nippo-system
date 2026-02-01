@@ -50,21 +50,50 @@
 
 3. **環境変数の設定**
 
-   `.env.local` ファイルを作成:
+   `.env` ファイルを作成:
 
    ```bash
-   cp .env.example .env.local
+   cp .env.example .env
    ```
 
    以下の環境変数を設定:
 
-   ```
-   DATABASE_URL="mysql://user:password@localhost:3306/nippo"
-   JWT_SECRET="your-secret-key-here"
-   JWT_REFRESH_SECRET="your-refresh-secret-key-here"
+   ```bash
+   # データベース接続（開発環境: Docker MySQL）
+   DATABASE_URL="mysql://root:root@localhost:3306/nippo"
+
+   # JWT認証（本番環境では必ず強力なランダム文字列に変更）
+   # 生成方法: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+   JWT_SECRET="your-secret-key-here-please-change-in-production"
+   JWT_REFRESH_SECRET="your-refresh-secret-key-here-please-change-in-production"
+   JWT_EXPIRES_IN="1h"
+   JWT_REFRESH_EXPIRES_IN="30d"
+
+   # Next.js
+   NEXT_PUBLIC_API_URL="http://localhost:3000/api"
+
+   # 環境
+   NODE_ENV="development"
    ```
 
-4. **データベースのセットアップ**
+   **環境変数のバリデーション**:
+
+   ```bash
+   # 環境変数が正しく設定されているか確認
+   npm run env:validate
+   ```
+
+4. **Docker Composeでデータベースを起動**
+
+   ```bash
+   # MySQLコンテナを起動
+   docker compose up -d
+
+   # データベース接続テスト
+   npm run db:test
+   ```
+
+5. **データベースのセットアップ**
 
    ```bash
    # Prismaクライアントの生成
@@ -77,13 +106,13 @@
    npm run prisma:studio
    ```
 
-5. **Huskyの初期化**
+6. **Huskyの初期化**
 
    ```bash
    npm run prepare
    ```
 
-6. **開発サーバーの起動**
+7. **開発サーバーの起動**
 
    ```bash
    npm run dev
@@ -146,6 +175,12 @@ npm run prisma:migrate
 
 # Prisma Studio起動
 npm run prisma:studio
+
+# データベース接続テスト
+npm run db:test
+
+# 環境変数のバリデーション
+npm run env:validate
 ```
 
 ### ディレクトリ構造
