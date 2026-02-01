@@ -108,3 +108,19 @@ export async function canEditDailyReport(userId: number, dailyReportId: number) 
 
   return { canEdit: dailyReport.salesId === userId, dailyReport };
 }
+
+/**
+ * ユーザーが管理者（部長以上）かチェックする
+ */
+export function isManager(user: { position: string | null }): boolean {
+  const managerPositions = ['部長', '課長'];
+  return user.position ? managerPositions.includes(user.position) : false;
+}
+
+/**
+ * ユーザーが全日報にアクセスできるかチェックする（管理者のみ）
+ */
+export function canAccessAllReports(user: { position: string | null }): boolean {
+  // 部長のみ全日報にアクセス可能
+  return user.position === '部長';
+}

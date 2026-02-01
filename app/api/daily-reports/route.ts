@@ -4,9 +4,11 @@ import {
   createErrorResponse,
   createValidationErrorResponse,
   getAuthenticatedUser,
+  canAccessAllReports,
 } from '@/lib/api-helpers';
-import { extractTokenFromHeader, verifyAccessToken } from '@/lib/auth';
+import { parseReportDate, formatReportDate } from '@/lib/date-helpers';
 import { prisma } from '@/lib/prisma';
+import { dailyReportSchema } from '@/lib/validators/daily-report';
 
 import type { Prisma } from '@prisma/client';
 import type { NextRequest } from 'next/server';
@@ -18,29 +20,10 @@ import type { NextRequest } from 'next/server';
 export async function GET(request: NextRequest) {
   try {
     // 認証チェック
-    const authHeader = request.headers.get('Authorization');
-    const token = extractTokenFromHeader(authHeader);
-
-    if (!token) {
+    const user = await getAuthenticatedUser(request);
+    if (!user) {
       return createErrorResponse('UNAUTHORIZED', '認証が必要です', 401);
     }
-
-    let decoded;
-    try {
-      decoded = verifyAccessToken(token);
-    } catch (error) {
-      if (error instanceof Error) {
-        if (error.message === 'TOKEN_EXPIRED') {
-          return createErrorResponse('TOKEN_EXPIRED', 'トークンの有効期限が切れています', 401);
-        }
-        if (error.message === 'INVALID_TOKEN') {
-          return createErrorResponse('INVALID_TOKEN', 'トークンが無効です', 401);
-        }
-      }
-      throw error;
-    }
-
-    const userId = decoded.userId;
 
     // クエリパラメータの取得
     const { searchParams } = new URL(request.url);
@@ -57,20 +40,27 @@ export async function GET(request: NextRequest) {
     // WHERE条件の構築
     const where: Prisma.DailyReportWhereInput = {};
 
-    // scope による絞り込み
+    // scope による絞り込みと権限チェック
     if (scope === 'own') {
-      where.salesId = userId;
+      where.salesId = user.id;
     } else if (scope === 'subordinates') {
       // 自分が上長の部下の日報
       const subordinates = await prisma.sales.findMany({
-        where: { managerId: userId },
+        where: { managerId: user.id },
         select: { id: true },
       });
       const subordinateIds = subordinates.map((s) => s.id);
       where.salesId = { in: subordinateIds };
     } else if (scope === 'all') {
-      // 全ての日報（権限チェックが必要な場合は後で追加）
-      // 現時点では全件取得を許可
+      // 全ての日報（部長のみ許可）
+      if (!canAccessAllReports(user)) {
+        return createErrorResponse(
+          'ACCESS_DENIED',
+          '全ての日報にアクセスする権限がありません',
+          403
+        );
+      }
+      // where条件を追加しない（全件取得）
     }
 
     // 営業担当者での絞り込み
@@ -91,10 +81,10 @@ export async function GET(request: NextRequest) {
     if (reportDateFrom || reportDateTo) {
       where.reportDate = {};
       if (reportDateFrom) {
-        where.reportDate.gte = new Date(reportDateFrom);
+        where.reportDate.gte = parseReportDate(reportDateFrom);
       }
       if (reportDateTo) {
-        where.reportDate.lte = new Date(reportDateTo);
+        where.reportDate.lte = parseReportDate(reportDateTo);
       }
     }
 
@@ -165,7 +155,7 @@ export async function GET(request: NextRequest) {
         id: report.id,
         sales_id: report.salesId,
         sales_name: report.sales.name,
-        report_date: report.reportDate.toISOString().split('T')[0],
+        report_date: formatReportDate(report.reportDate),
         visit_count: report.visitRecords.length,
         problem_count: report.problems.length,
         plan_count: report.plans.length,
@@ -207,30 +197,26 @@ export async function POST(request: NextRequest) {
       return createErrorResponse('UNAUTHORIZED', '認証が必要です', 401);
     }
 
-    // リクエストボディの取得
-    const body = (await request.json()) as { report_date?: string };
-    const { report_date } = body;
+    // リクエストボディの取得とバリデーション
+    const body: unknown = await request.json();
 
-    // バリデーション
-    const errors: Array<{ field: string; message: string }> = [];
-
-    if (!report_date) {
-      errors.push({ field: 'report_date', message: '報告日を入力してください' });
-    }
-
-    if (errors.length > 0) {
+    // Zodバリデーション
+    const validation = dailyReportSchema.safeParse(body);
+    if (!validation.success) {
+      const errors = validation.error.errors.map((err) => ({
+        field: err.path.join('.'),
+        message: err.message,
+      }));
       return createValidationErrorResponse(errors);
     }
 
-    // 日付フォーマットチェック
-    if (!report_date) {
-      return createValidationErrorResponse([
-        { field: 'report_date', message: '報告日を入力してください' },
-      ]);
-    }
+    const { report_date } = validation.data;
 
-    const reportDate = new Date(report_date);
-    if (isNaN(reportDate.getTime())) {
+    // 日付パース
+    let reportDate: Date;
+    try {
+      reportDate = parseReportDate(report_date);
+    } catch (error) {
       return createValidationErrorResponse([
         { field: 'report_date', message: '報告日の形式が正しくありません' },
       ]);
@@ -273,7 +259,7 @@ export async function POST(request: NextRequest) {
         id: dailyReport.id,
         sales_id: dailyReport.salesId,
         sales_name: dailyReport.sales.name,
-        report_date: dailyReport.reportDate.toISOString().split('T')[0],
+        report_date: formatReportDate(dailyReport.reportDate),
         visit_records: [],
         problems: [],
         plans: [],

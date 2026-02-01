@@ -7,7 +7,9 @@ import {
   canAccessDailyReport,
   canEditDailyReport,
 } from '@/lib/api-helpers';
+import { parseReportDate, formatReportDate } from '@/lib/date-helpers';
 import { prisma } from '@/lib/prisma';
+import { dailyReportSchema } from '@/lib/validators/daily-report';
 
 import type { NextRequest } from 'next/server';
 
@@ -112,7 +114,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       id: detailedReport.id,
       sales_id: detailedReport.salesId,
       sales_name: detailedReport.sales.name,
-      report_date: detailedReport.reportDate.toISOString().split('T')[0],
+      report_date: formatReportDate(detailedReport.reportDate),
       visit_records: detailedReport.visitRecords.map((vr) => ({
         id: vr.id,
         customer_id: vr.customerId,
@@ -191,30 +193,26 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       return createErrorResponse('ACCESS_DENIED', 'この日報を編集する権限がありません', 403);
     }
 
-    // リクエストボディの取得
-    const body = (await request.json()) as { report_date?: string };
-    const { report_date } = body;
+    // リクエストボディの取得とバリデーション
+    const body: unknown = await request.json();
 
-    // バリデーション
-    const errors: Array<{ field: string; message: string }> = [];
-
-    if (!report_date) {
-      errors.push({ field: 'report_date', message: '報告日を入力してください' });
-    }
-
-    if (errors.length > 0) {
+    // Zodバリデーション
+    const validation = dailyReportSchema.safeParse(body);
+    if (!validation.success) {
+      const errors = validation.error.errors.map((err) => ({
+        field: err.path.join('.'),
+        message: err.message,
+      }));
       return createValidationErrorResponse(errors);
     }
 
-    // 日付フォーマットチェック
-    if (!report_date) {
-      return createValidationErrorResponse([
-        { field: 'report_date', message: '報告日を入力してください' },
-      ]);
-    }
+    const { report_date } = validation.data;
 
-    const reportDate = new Date(report_date);
-    if (isNaN(reportDate.getTime())) {
+    // 日付パース
+    let reportDate: Date;
+    try {
+      reportDate = parseReportDate(report_date);
+    } catch (error) {
       return createValidationErrorResponse([
         { field: 'report_date', message: '報告日の形式が正しくありません' },
       ]);
@@ -293,7 +291,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       id: updatedReport.id,
       sales_id: updatedReport.salesId,
       sales_name: updatedReport.sales.name,
-      report_date: updatedReport.reportDate.toISOString().split('T')[0],
+      report_date: formatReportDate(updatedReport.reportDate),
       visit_records: updatedReport.visitRecords.map((vr) => ({
         id: vr.id,
         customer_id: vr.customerId,
