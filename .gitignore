@@ -40,5 +40,4 @@ next-env.d.ts
 *~
 
 # Prisma
-prisma/migrations/*
-!prisma/migrations/.gitkeep
+# マイグレーションファイルはバージョン管理に含める

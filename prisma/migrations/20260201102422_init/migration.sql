@@ -1,0 +1,116 @@
+-- CreateTable
+CREATE TABLE `営業マスタ` (
+    `営業ID` INTEGER NOT NULL AUTO_INCREMENT,
+    `営業名` VARCHAR(100) NOT NULL,
+    `所属部署` VARCHAR(100) NULL,
+    `役職` VARCHAR(50) NULL,
+    `メールアドレス` VARCHAR(255) NOT NULL,
+    `パスワード` VARCHAR(255) NOT NULL,
+    `上長ID` INTEGER NULL,
+    `登録日時` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `更新日時` DATETIME(3) NOT NULL,
+
+    UNIQUE INDEX `営業マスタ_メールアドレス_key`(`メールアドレス`),
+    PRIMARY KEY (`営業ID`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `顧客マスタ` (
+    `顧客ID` INTEGER NOT NULL AUTO_INCREMENT,
+    `顧客名` VARCHAR(200) NOT NULL,
+    `担当者名` VARCHAR(100) NULL,
+    `電話番号` VARCHAR(20) NULL,
+    `住所` VARCHAR(255) NULL,
+    `業種` VARCHAR(100) NULL,
+    `登録日時` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `更新日時` DATETIME(3) NOT NULL,
+
+    PRIMARY KEY (`顧客ID`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `日報` (
+    `日報ID` INTEGER NOT NULL AUTO_INCREMENT,
+    `営業ID` INTEGER NOT NULL,
+    `報告日` DATE NOT NULL,
+    `作成日時` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `更新日時` DATETIME(3) NOT NULL,
+
+    UNIQUE INDEX `日報_営業ID_報告日_key`(`営業ID`, `報告日`),
+    PRIMARY KEY (`日報ID`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `訪問記録` (
+    `訪問記録ID` INTEGER NOT NULL AUTO_INCREMENT,
+    `日報ID` INTEGER NOT NULL,
+    `顧客ID` INTEGER NOT NULL,
+    `訪問内容` TEXT NOT NULL,
+    `訪問開始時刻` VARCHAR(8) NULL,
+    `訪問終了時刻` VARCHAR(8) NULL,
+    `作成日時` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+
+    PRIMARY KEY (`訪問記録ID`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `Problem` (
+    `ProblemID` INTEGER NOT NULL AUTO_INCREMENT,
+    `日報ID` INTEGER NOT NULL,
+    `内容` TEXT NOT NULL,
+    `作成日時` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `更新日時` DATETIME(3) NOT NULL,
+
+    PRIMARY KEY (`ProblemID`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `Plan` (
+    `PlanID` INTEGER NOT NULL AUTO_INCREMENT,
+    `日報ID` INTEGER NOT NULL,
+    `内容` TEXT NOT NULL,
+    `作成日時` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `更新日時` DATETIME(3) NOT NULL,
+
+    PRIMARY KEY (`PlanID`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `コメント` (
+    `コメントID` INTEGER NOT NULL AUTO_INCREMENT,
+    `対象区分` ENUM('PROBLEM', 'PLAN') NOT NULL,
+    `対象ID` INTEGER NOT NULL,
+    `コメント者ID` INTEGER NOT NULL,
+    `コメント内容` TEXT NOT NULL,
+    `作成日時` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+
+    INDEX `コメント_対象区分_対象ID_idx`(`対象区分`, `対象ID`),
+    PRIMARY KEY (`コメントID`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- AddForeignKey
+ALTER TABLE `営業マスタ` ADD CONSTRAINT `営業マスタ_上長ID_fkey` FOREIGN KEY (`上長ID`) REFERENCES `営業マスタ`(`営業ID`) ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `日報` ADD CONSTRAINT `日報_営業ID_fkey` FOREIGN KEY (`営業ID`) REFERENCES `営業マスタ`(`営業ID`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `訪問記録` ADD CONSTRAINT `訪問記録_日報ID_fkey` FOREIGN KEY (`日報ID`) REFERENCES `日報`(`日報ID`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `訪問記録` ADD CONSTRAINT `訪問記録_顧客ID_fkey` FOREIGN KEY (`顧客ID`) REFERENCES `顧客マスタ`(`顧客ID`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `Problem` ADD CONSTRAINT `Problem_日報ID_fkey` FOREIGN KEY (`日報ID`) REFERENCES `日報`(`日報ID`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `Plan` ADD CONSTRAINT `Plan_日報ID_fkey` FOREIGN KEY (`日報ID`) REFERENCES `日報`(`日報ID`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `コメント` ADD CONSTRAINT `コメント_コメント者ID_fkey` FOREIGN KEY (`コメント者ID`) REFERENCES `営業マスタ`(`営業ID`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `コメント` ADD CONSTRAINT `コメント_Problem_fkey` FOREIGN KEY (`対象ID`) REFERENCES `Problem`(`ProblemID`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `コメント` ADD CONSTRAINT `コメント_Plan_fkey` FOREIGN KEY (`対象ID`) REFERENCES `Plan`(`PlanID`) ON DELETE CASCADE ON UPDATE CASCADE;
