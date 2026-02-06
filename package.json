@@ -90,11 +90,11 @@
     "vitest": "^2.1.0"
   },
   "lint-staged": {
-    "*.{ts,tsx,js,jsx}": [
+    "**/*.{ts,tsx,js,jsx}": [
       "eslint --fix",
       "prettier --write"
     ],
-    "*.{json,md}": [
+    "**/*.{json,css,md}": [
       "prettier --write"
     ]
   },
