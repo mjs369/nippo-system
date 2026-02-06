@@ -1,5 +1,5 @@
-import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
+import { hash, compare } from 'bcrypt';
+import { sign, verify, TokenExpiredError, JsonWebTokenError, type SignOptions } from 'jsonwebtoken';
 
 /**
  * JWTペイロードの型定義
@@ -28,7 +28,7 @@ export interface DecodedToken extends JWTPayload {
  */
 export function hashPassword(password: string): Promise<string> {
   const saltRounds = 10;
-  return bcrypt.hash(password, saltRounds);
+  return hash(password, saltRounds);
 }
 
 /**
@@ -38,7 +38,7 @@ export function hashPassword(password: string): Promise<string> {
  * @returns パスワードが一致する場合はtrue
  */
 export function verifyPassword(password: string, hashedPassword: string): Promise<boolean> {
-  return bcrypt.compare(password, hashedPassword);
+  return compare(password, hashedPassword);
 }
 
 /**
@@ -54,11 +54,11 @@ export function generateAccessToken(payload: JWTPayload): string {
 
   const expiresIn = process.env.JWT_EXPIRES_IN || '1h';
 
-  return jwt.sign(payload, secret, {
+  return sign(payload, secret, {
     expiresIn: expiresIn as string | number,
     issuer: 'nippo-system',
     audience: 'nippo-api',
-  } as jwt.SignOptions);
+  } as SignOptions);
 }
 
 /**
@@ -74,11 +74,11 @@ export function generateRefreshToken(payload: JWTPayload): string {
 
   const expiresIn = process.env.JWT_REFRESH_EXPIRES_IN || '30d';
 
-  return jwt.sign(payload, secret, {
+  return sign(payload, secret, {
     expiresIn: expiresIn as string | number,
     issuer: 'nippo-system',
     audience: 'nippo-api',
-  } as jwt.SignOptions);
+  } as SignOptions);
 }
 
 /**
@@ -93,17 +93,17 @@ export function verifyAccessToken(token: string): DecodedToken {
   }
 
   try {
-    const decoded = jwt.verify(token, secret, {
+    const decoded = verify(token, secret, {
       issuer: 'nippo-system',
       audience: 'nippo-api',
     }) as DecodedToken;
 
     return decoded;
   } catch (error) {
-    if (error instanceof jwt.TokenExpiredError) {
+    if (error instanceof TokenExpiredError) {
       throw new Error('TOKEN_EXPIRED');
     }
-    if (error instanceof jwt.JsonWebTokenError) {
+    if (error instanceof JsonWebTokenError) {
       throw new Error('INVALID_TOKEN');
     }
     throw error;
@@ -122,17 +122,17 @@ export function verifyRefreshToken(token: string): DecodedToken {
   }
 
   try {
-    const decoded = jwt.verify(token, secret, {
+    const decoded = verify(token, secret, {
       issuer: 'nippo-system',
       audience: 'nippo-api',
     }) as DecodedToken;
 
     return decoded;
   } catch (error) {
-    if (error instanceof jwt.TokenExpiredError) {
+    if (error instanceof TokenExpiredError) {
       throw new Error('TOKEN_EXPIRED');
     }
-    if (error instanceof jwt.JsonWebTokenError) {
+    if (error instanceof JsonWebTokenError) {
       throw new Error('INVALID_TOKEN');
     }
     throw error;

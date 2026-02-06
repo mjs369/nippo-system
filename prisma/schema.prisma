@@ -167,10 +167,10 @@ model Comment {
   commenter Sales @relation(fields: [commenterId], references: [id], onDelete: Cascade)
 
   // Problemへのコメント (多コメント : 1Problem)
-  problem Problem? @relation("ProblemComments", fields: [targetId], references: [id], onDelete: Cascade)
+  problem Problem? @relation("ProblemComments", fields: [targetId], references: [id], onDelete: Cascade, map: "コメント_Problem_fkey")
 
   // Planへのコメント (多コメント : 1Plan)
-  plan Plan? @relation("PlanComments", fields: [targetId], references: [id], onDelete: Cascade)
+  plan Plan? @relation("PlanComments", fields: [targetId], references: [id], onDelete: Cascade, map: "コメント_Plan_fkey")
 
   @@index([targetType, targetId])
   @@map("コメント")
