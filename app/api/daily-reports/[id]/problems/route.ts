@@ -15,10 +15,7 @@ import type { NextRequest } from 'next/server';
  * POST /api/daily-reports/:id/problems
  * 日報にProblemを追加する
  */
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     // 認証チェック
     const user = await getAuthenticatedUser(request);

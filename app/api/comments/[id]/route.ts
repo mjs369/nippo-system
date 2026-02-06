@@ -39,15 +39,11 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
     // 作成者のみ更新可能
     if (existingComment.commenterId !== user.id) {
-      return createErrorResponse(
-        'ACCESS_DENIED',
-        'このコメントを更新する権限がありません',
-        403
-      );
+      return createErrorResponse('ACCESS_DENIED', 'このコメントを更新する権限がありません', 403);
     }
 
     // リクエストボディの取得とバリデーション
-    const body = await request.json();
+    const body = (await request.json()) as unknown;
     const validationResult = commentSchema.safeParse(body);
 
     if (!validationResult.success) {
@@ -91,11 +87,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     );
   } catch (error) {
     console.error('コメント更新エラー:', error);
-    return createErrorResponse(
-      'INTERNAL_SERVER_ERROR',
-      'サーバー内部エラーが発生しました',
-      500
-    );
+    return createErrorResponse('INTERNAL_SERVER_ERROR', 'サーバー内部エラーが発生しました', 500);
   }
 }
 
@@ -128,11 +120,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
 
     // 作成者のみ削除可能
     if (existingComment.commenterId !== user.id) {
-      return createErrorResponse(
-        'ACCESS_DENIED',
-        'このコメントを削除する権限がありません',
-        403
-      );
+      return createErrorResponse('ACCESS_DENIED', 'このコメントを削除する権限がありません', 403);
     }
 
     // コメントを削除
@@ -144,10 +132,6 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     return new NextResponse(null, { status: 204 });
   } catch (error) {
     console.error('コメント削除エラー:', error);
-    return createErrorResponse(
-      'INTERNAL_SERVER_ERROR',
-      'サーバー内部エラーが発生しました',
-      500
-    );
+    return createErrorResponse('INTERNAL_SERVER_ERROR', 'サーバー内部エラーが発生しました', 500);
   }
 }

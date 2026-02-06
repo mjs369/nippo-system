@@ -79,7 +79,9 @@ describe('PUT /api/comments/:id', () => {
 
     expect(response.status).toBe(200);
     expect(data.id).toBe(401);
-    expect(data.content).toBe('5%までの値引きであれば承認します。明日の午後、詳細を相談しましょう。');
+    expect(data.content).toBe(
+      '5%までの値引きであれば承認します。明日の午後、詳細を相談しましょう。'
+    );
   });
 
   it('異常系: 認証トークンなし', async () => {

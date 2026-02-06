@@ -15,10 +15,7 @@ import type { NextRequest } from 'next/server';
  * POST /api/problems/{problem_id}/comments
  * Problemへのコメント追加
  */
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { problem_id: string } }
-) {
+export async function POST(request: NextRequest, { params }: { params: { problem_id: string } }) {
   try {
     // 認証チェック
     const user = await getAuthenticatedUser(request);
@@ -33,7 +30,7 @@ export async function POST(
     }
 
     // リクエストボディの取得とバリデーション
-    const body = await request.json();
+    const body = (await request.json()) as unknown;
     const validationResult = commentSchema.safeParse(body);
 
     if (!validationResult.success) {
@@ -92,10 +89,6 @@ export async function POST(
     );
   } catch (error) {
     console.error('コメント作成エラー:', error);
-    return createErrorResponse(
-      'INTERNAL_SERVER_ERROR',
-      'サーバー内部エラーが発生しました',
-      500
-    );
+    return createErrorResponse('INTERNAL_SERVER_ERROR', 'サーバー内部エラーが発生しました', 500);
   }
 }

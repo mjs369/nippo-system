@@ -5,13 +5,7 @@
  * 型安全にアクセスするためのユーティリティを提供します。
  */
 
-import { config } from 'dotenv';
 import { z } from 'zod';
-
-// .envファイルをロード（Next.jsの外で実行する場合のため）
-if (process.env.NODE_ENV !== 'production') {
-  config();
-}
 
 /**
  * 環境変数のスキーマ定義
