@@ -124,3 +124,67 @@ export function canAccessAllReports(user: { position: string | null }): boolean 
   // 部長のみ全日報にアクセス可能
   return user.position === '部長';
 }
+
+/**
+ * ユーザーが特定のProblemにコメントできるかチェックする
+ * - 上長（課長以上）のみコメント可能
+ * - かつ、自分の部下の日報のProblemにのみコメント可能
+ */
+export async function canCommentOnProblem(userId: number, problemId: number) {
+  // Problemを取得し、日報の作成者情報も含める
+  const problem = await prisma.problem.findUnique({
+    where: { id: problemId },
+    include: {
+      dailyReport: {
+        include: {
+          sales: {
+            select: {
+              managerId: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!problem) {
+    return { canComment: false, problem: null };
+  }
+
+  // 日報の作成者の上長である場合のみコメント可能
+  const isSubordinatesReport = problem.dailyReport.sales.managerId === userId;
+
+  return { canComment: isSubordinatesReport, problem };
+}
+
+/**
+ * ユーザーが特定のPlanにコメントできるかチェックする
+ * - 上長（課長以上）のみコメント可能
+ * - かつ、自分の部下の日報のPlanにのみコメント可能
+ */
+export async function canCommentOnPlan(userId: number, planId: number) {
+  // Planを取得し、日報の作成者情報も含める
+  const plan = await prisma.plan.findUnique({
+    where: { id: planId },
+    include: {
+      dailyReport: {
+        include: {
+          sales: {
+            select: {
+              managerId: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!plan) {
+    return { canComment: false, plan: null };
+  }
+
+  // 日報の作成者の上長である場合のみコメント可能
+  const isSubordinatesReport = plan.dailyReport.sales.managerId === userId;
+
+  return { canComment: isSubordinatesReport, plan };
+}

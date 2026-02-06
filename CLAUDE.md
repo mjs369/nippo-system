@@ -7,6 +7,7 @@
 - 返答は常に日本語で行うこと
 - 技術的な正確性と品質を最優先すること
 - 不明な点があれば、推測ではなくユーザーに確認すること
+- ユーザーは技術者ではなく学習中のため、技術やツールに関することであれば初回は必ずそれが何をする行為なのかを説明すること
 
 ---
 
@@ -664,9 +665,197 @@ Closes #123
 
 ---
 
-## 9. トラブルシューティング
+## 9. Git Worktreeによる並列開発
 
-### 9.1 よくある問題
+### 9.1 概要
+
+このプロジェクトでは、**Git Worktree**を使用して複数のIssueを並列で開発します。これにより、ブランチを切り替えることなく、複数の機能を同時に開発できます。
+
+### 9.2 ディレクトリ構造
+
+```
+/Users/masa/Desktop/test/
+├── nippo/                          # メインディレクトリ（feature/issue-6-10-daily-reports-api）
+├── nippo-issue-11/                 # Issue #11-13用（訪問記録API）
+├── nippo-issue-14/                 # Issue #14-16用（Problem API）
+├── nippo-issue-17/                 # Issue #17-19用（Plan API）
+└── ...                             # 必要に応じて追加
+```
+
+**重要**: すべてのworktreeディレクトリは同じGitリポジトリを共有しています。
+
+### 9.3 Worktreeの作成
+
+新しいIssueに取り組む際は、以下のコマンドでworktreeを作成します:
+
+```bash
+# 親ディレクトリに移動
+cd /Users/masa/Desktop/test/
+
+# Issue #11-13用のworktreeを作成
+git worktree add nippo-issue-11 -b feature/issue-11-13-visit-record-api
+
+# Issue #14-16用のworktreeを作成
+git worktree add nippo-issue-14 -b feature/issue-14-16-problem-api
+
+# Issue #17-19用のworktreeを作成
+git worktree add nippo-issue-17 -b feature/issue-17-19-plan-api
+```
+
+### 9.4 Worktreeの確認
+
+作成されたworktreeを確認するには:
+
+```bash
+git worktree list
+```
+
+出力例:
+
+```
+/Users/masa/Desktop/test/nippo           43bb2cc [feature/issue-6-10-daily-reports-api]
+/Users/masa/Desktop/test/nippo-issue-11  43bb2cc [feature/issue-11-13-visit-record-api]
+/Users/masa/Desktop/test/nippo-issue-14  43bb2cc [feature/issue-14-16-problem-api]
+/Users/masa/Desktop/test/nippo-issue-17  43bb2cc [feature/issue-17-19-plan-api]
+```
+
+### 9.5 lint-stagedの設定
+
+**重要**: worktreeディレクトリでもlint-stagedが動作するように、`package.json`の設定を以下のように変更済みです:
+
+```json
+"lint-staged": {
+  "**/*.{ts,tsx,js,jsx}": [
+    "eslint --fix",
+    "prettier --write"
+  ],
+  "**/*.{json,css,md}": [
+    "prettier --write"
+  ]
+}
+```
+
+`**/*` の記法により、サブディレクトリのファイルも対象になります。
+
+### 9.6 Huskyの初期化（Deprecated）
+
+**注意**: Husky 9以降では、`husky install`コマンドはdeprecatedです。各worktreeディレクトリで自動的にGit hooksが有効化されます。
+
+もし明示的に実行する必要がある場合:
+
+```bash
+cd /Users/masa/Desktop/test/nippo-issue-11
+npx husky install
+```
+
+### 9.7 Worktreeでの作業フロー
+
+各worktreeディレクトリで独立して作業できます:
+
+```bash
+# Issue #11-13のディレクトリに移動
+cd /Users/masa/Desktop/test/nippo-issue-11
+
+# 現在のブランチを確認
+git branch
+# * feature/issue-11-13-visit-record-api
+
+# 通常通り開発
+npm run dev
+npm test
+npm run lint
+
+# コミット
+git add .
+git commit -m "feat: 訪問記録追加API実装"
+
+# プッシュ
+git push origin feature/issue-11-13-visit-record-api
+```
+
+### 9.8 サブエージェントによる並列開発
+
+複数のClaude Codeエージェントを使用して並列開発を行う場合:
+
+1. **各エージェント用のターミナルを開く**
+   - VS Codeのターミナル分割機能を使用
+   - または、複数のVS Codeウィンドウを開く
+
+2. **各エージェントに異なるworktreeを割り当てる**
+   - Agent 1: `/Users/masa/Desktop/test/nippo-issue-11` (訪問記録API)
+   - Agent 2: `/Users/masa/Desktop/test/nippo-issue-14` (Problem API)
+   - Agent 3: `/Users/masa/Desktop/test/nippo-issue-17` (Plan API)
+
+3. **各エージェントが独立して作業**
+   - それぞれのディレクトリで`npm run dev`を実行
+   - それぞれが独立してコミット・プッシュ
+   - コンフリクトを避けるため、異なるファイルを編集
+
+### 9.9 Worktreeの削除
+
+作業完了後、不要になったworktreeを削除:
+
+```bash
+# worktreeを削除
+git worktree remove nippo-issue-11
+
+# または、ディレクトリを削除してからprune
+rm -rf nippo-issue-11
+git worktree prune
+```
+
+### 9.10 注意事項
+
+1. **同じブランチを複数のworktreeでチェックアウトできない**
+   - 各worktreeは異なるブランチを使用する必要がある
+
+2. **共有リソースの競合に注意**
+   - データベース接続（ポート番号など）
+   - 開発サーバーのポート（Next.jsのデフォルトは3000）
+   - 各worktreeで異なるポートを使用: `PORT=3001 npm run dev`
+
+3. **node_modulesは各ディレクトリに個別に存在**
+   - 各worktreeで`npm install`を実行する必要がある
+
+4. **Gitの状態は共有される**
+   - あるworktreeでフェッチした内容は、他のworktreeでも反映される
+
+5. **PRのマージ順序**
+   - 依存関係のあるAPIは順番にマージする
+   - 訪問記録・Problem・Plan APIは独立しているため、順不同でマージ可能
+
+### 9.11 推奨される並列開発パターン
+
+**パターン1: 3エージェント並列（推奨）**
+
+```
+Agent 1: Issue #11-13 (訪問記録API)  → nippo-issue-11
+Agent 2: Issue #14-16 (Problem API)   → nippo-issue-14
+Agent 3: Issue #17-19 (Plan API)      → nippo-issue-17
+```
+
+これらは互いに依存しないため、安全に並列開発できます。
+
+**パターン2: 5エージェント並列（高速だが要注意）**
+
+```
+Agent 1: Issue #11-13 (訪問記録API)
+Agent 2: Issue #14-16 (Problem API)
+Agent 3: Issue #17-19 (Plan API)
+Agent 4: Issue #24-28 (顧客マスタAPI)
+Agent 5: Issue #29-30 (営業マスタAPI)
+```
+
+**避けるべきパターン**:
+
+- Comment API（Issue #20-23）は、Problem/Plan API完了後に実装
+- 同じファイルを複数のエージェントで編集
+
+---
+
+## 10. トラブルシューティング
+
+### 10.1 よくある問題
 
 #### Prismaのマイグレーションエラー
 
@@ -690,7 +879,7 @@ npx prisma migrate dev --name init
 
 ---
 
-## 10. 参考リンク
+## 11. 参考リンク
 
 ### 公式ドキュメント
 
@@ -717,6 +906,7 @@ npx prisma migrate dev --name init
 
 ## 改訂履歴
 
-| バージョン | 日付       | 作成者 | 変更内容 |
-| ---------- | ---------- | ------ | -------- |
-| 1.0        | 2026-02-01 | Claude | 初版作成 |
+| バージョン | 日付       | 作成者 | 変更内容                         |
+| ---------- | ---------- | ------ | -------------------------------- |
+| 1.1        | 2026-02-02 | Claude | Git Worktreeによる並列開発を追加 |
+| 1.0        | 2026-02-01 | Claude | 初版作成                         |
