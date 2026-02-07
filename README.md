@@ -58,7 +58,8 @@
 - [画面設計書](./doc/SCREEN_DESIGN.md)
 - [API仕様書](./doc/API_SCHEME.md)
 - [テスト仕様書](./doc/TEST_DEFINITION.md)
-- [デプロイ手順書](./doc/DEPLOYMENT.md) ⭐ **New!**
+- [デプロイ手順書（初心者向け）](./doc/DEPLOYMENT_GUIDE.md) ⭐ **New!**
+- [デプロイ手順書（エンジニア向け）](./doc/DEPLOYMENT.md)
 - [ER図](./doc/ER_DIAGRAM.md)
 
 ## 🚀 技術スタック
