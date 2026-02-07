@@ -1,0 +1,58 @@
+# 依存関係
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Next.js
+.next/
+out/
+build/
+dist/
+
+# テスト
+coverage/
+.nyc_output/
+__tests__/
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+test-results/
+playwright-report/
+
+# 開発環境
+.env
+.env*.local
+.env.development
+.env.test
+
+# Git
+.git/
+.gitignore
+.github/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# ドキュメント
+*.md
+README.md
+CLAUDE.md
+doc/
+docs/
+
+# その他
+.husky/
+.editorconfig
+.eslintrc*
+.prettierrc*
+*.log

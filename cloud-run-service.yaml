@@ -1,0 +1,72 @@
+# Cloud Runサービス設定ファイル
+# gcloud run services replace cloud-run-service.yaml でデプロイ可能
+
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: nippo-app
+  labels:
+    cloud.googleapis.com/location: asia-northeast1
+  annotations:
+    run.googleapis.com/ingress: all
+    run.googleapis.com/ingress-status: all
+spec:
+  template:
+    metadata:
+      annotations:
+        # Cloud SQLへの接続
+        run.googleapis.com/cloudsql-instances: YOUR_PROJECT_ID:asia-northeast1:YOUR_INSTANCE_NAME
+        # 自動スケーリング設定
+        autoscaling.knative.dev/maxScale: '10'
+        autoscaling.knative.dev/minScale: '0'
+        # CPUスロットリング（リクエスト処理中のみCPU使用）
+        run.googleapis.com/cpu-throttling: 'true'
+    spec:
+      # サービスアカウント（Cloud SQLへのアクセス権限が必要）
+      serviceAccountName: YOUR_SERVICE_ACCOUNT@YOUR_PROJECT_ID.iam.gserviceaccount.com
+      # コンテナタイムアウト
+      timeoutSeconds: 300
+      containers:
+        - image: gcr.io/YOUR_PROJECT_ID/nippo-app:latest
+          ports:
+            - name: http1
+              containerPort: 3000
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: nippo-database-url
+                  key: latest
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: nippo-jwt-secret
+                  key: latest
+            - name: JWT_EXPIRES_IN
+              value: "1h"
+          resources:
+            limits:
+              cpu: '1000m'
+              memory: 512Mi
+          # ヘルスチェック
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          startupProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            initialDelaySeconds: 0
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 30
+  traffic:
+    - percent: 100
+      latestRevision: true

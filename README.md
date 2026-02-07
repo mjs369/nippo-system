@@ -58,6 +58,7 @@
 - [画面設計書](./doc/SCREEN_DESIGN.md)
 - [API仕様書](./doc/API_SCHEME.md)
 - [テスト仕様書](./doc/TEST_DEFINITION.md)
+- [デプロイ手順書](./doc/DEPLOYMENT.md) ⭐ **New!**
 - [ER図](./doc/ER_DIAGRAM.md)
 
 ## 🚀 技術スタック
@@ -376,93 +377,49 @@ npm run test:e2e:ui
 - Google Cloud CLIのインストール
 - Cloud SQL（MySQL）インスタンスの作成
 
-#### デプロイ手順
+詳細なデプロイ手順は **[デプロイ手順書（DEPLOYMENT.md）](./doc/DEPLOYMENT.md)** を参照してください。
 
-1. **GCPプロジェクトの設定**
+#### クイックスタート
 
-   ```bash
-   # Google Cloud CLIのインストール確認
-   gcloud --version
+```bash
+# 1. GCPプロジェクトの設定
+gcloud config set project YOUR_PROJECT_ID
 
-   # GCPにログイン
-   gcloud auth login
+# 2. 必要なAPIを有効化
+gcloud services enable run.googleapis.com sqladmin.googleapis.com secretmanager.googleapis.com
 
-   # プロジェクトを設定
-   gcloud config set project YOUR_PROJECT_ID
-   ```
+# 3. Cloud SQLインスタンスを作成
+gcloud sql instances create nippo-db \
+  --database-version=MYSQL_8_0 \
+  --tier=db-f1-micro \
+  --region=asia-northeast1
 
-2. **Cloud SQLインスタンスの作成**
+# 4. Cloud Runにデプロイ
+gcloud run deploy nippo-app \
+  --source . \
+  --platform managed \
+  --region asia-northeast1 \
+  --allow-unauthenticated
+```
 
-   ```bash
-   # Cloud SQLインスタンスを作成
-   gcloud sql instances create nippo-db \
-     --database-version=MYSQL_8_0 \
-     --tier=db-f1-micro \
-     --region=asia-northeast1
+#### ローカル環境でのDocker実行
 
-   # データベースを作成
-   gcloud sql databases create nippo --instance=nippo-db
+```bash
+# MySQLコンテナを起動
+docker-compose up -d mysql
 
-   # ユーザーを作成
-   gcloud sql users create nippo-user \
-     --instance=nippo-db \
-     --password=YOUR_SECURE_PASSWORD
-   ```
+# マイグレーション実行
+npm run prisma:migrate
 
-3. **環境変数の設定**
+# アプリケーションコンテナをビルド＆起動
+docker-compose up -d app
 
-   本番環境用の`.env.production`ファイルを作成:
+# http://localhost:3000 でアクセス
+```
 
-   ```bash
-   # データベース接続（Cloud SQL）
-   DATABASE_URL="mysql://nippo-user:YOUR_PASSWORD@/nippo?host=/cloudsql/YOUR_PROJECT_ID:asia-northeast1:nippo-db"
+#### CI/CDパイプライン
 
-   # JWT認証（必ず強力なランダム文字列に変更）
-   JWT_SECRET="your-production-secret-key"
-   JWT_REFRESH_SECRET="your-production-refresh-secret-key"
-   JWT_EXPIRES_IN="1h"
-   JWT_REFRESH_EXPIRES_IN="30d"
-
-   # Next.js
-   NEXT_PUBLIC_API_URL="https://your-app-url.run.app/api"
-
-   # 環境
-   NODE_ENV="production"
-   ```
-
-4. **Dockerイメージのビルドとデプロイ**
-
-   ```bash
-   # Cloud Buildを使用してデプロイ
-   gcloud run deploy nippo-system \
-     --source . \
-     --platform managed \
-     --region asia-northeast1 \
-     --allow-unauthenticated \
-     --add-cloudsql-instances YOUR_PROJECT_ID:asia-northeast1:nippo-db \
-     --set-env-vars NODE_ENV=production
-
-   # カスタムドメインの設定（オプション）
-   gcloud run domain-mappings create \
-     --service nippo-system \
-     --domain your-domain.com \
-     --region asia-northeast1
-   ```
-
-5. **データベースマイグレーションの実行**
-
-   ```bash
-   # Cloud Shellまたはローカルから実行
-   # Cloud SQL Proxyを使用してデータベースに接続
-   gcloud sql connect nippo-db --user=nippo-user
-
-   # マイグレーションを実行
-   npm run prisma:migrate
-   ```
-
-#### GitHub Actionsによる自動デプロイ
-
-`.github/workflows/deploy.yml`を参照してください。mainブランチへのマージ時に自動的にデプロイされます。
+Cloud Buildトリガーを設定することで、GitHubへのプッシュで自動デプロイが可能です。詳細は[デプロイ手順書](./doc/DEPLOYMENT.md)を参照してください。
 
 ### その他のデプロイ先
 
@@ -755,14 +712,18 @@ Private
 - ✅ 単体テスト実装（210テスト）
 - ✅ E2Eテスト実装（日報フロー、コメントフロー）
 - ✅ ドキュメント整備
+- ✅ Dockerコンテナ化（Dockerfile, docker-compose.yml）
+- ✅ Google Cloud Run デプロイ設定
+- ✅ デプロイ手順書作成
+- ✅ CI/CD設定（Cloud Build）
 
 ### 今後の予定
 
 - [ ] フロントエンド画面実装
 - [ ] パフォーマンス最適化
-- [ ] CI/CDパイプライン構築
 - [ ] 本番環境デプロイ
 - [ ] モニタリング・ログ集約
+- [ ] ユーザー向けマニュアル作成
 
 ## 📧 お問い合わせ
 

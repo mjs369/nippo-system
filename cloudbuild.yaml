@@ -1,0 +1,72 @@
+# Google Cloud Build設定ファイル
+# Cloud Runへの自動デプロイを行います
+
+steps:
+  # Step 1: Dockerイメージのビルド
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/nippo-app:$COMMIT_SHA'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/nippo-app:latest'
+      - '--cache-from'
+      - 'gcr.io/$PROJECT_ID/nippo-app:latest'
+      - '.'
+
+  # Step 2: DockerイメージをContainer Registryにプッシュ
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/nippo-app:$COMMIT_SHA'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/nippo-app:latest'
+
+  # Step 3: Cloud Runにデプロイ
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'nippo-app'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/nippo-app:$COMMIT_SHA'
+      - '--region'
+      - 'asia-northeast1'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--memory'
+      - '512Mi'
+      - '--cpu'
+      - '1'
+      - '--timeout'
+      - '300'
+      - '--max-instances'
+      - '10'
+      - '--min-instances'
+      - '0'
+      - '--set-env-vars'
+      - 'NODE_ENV=production'
+      - '--add-cloudsql-instances'
+      - '${_CLOUD_SQL_CONNECTION_NAME}'
+
+# ビルドタイムアウト（デフォルト: 10分）
+timeout: '1200s'
+
+# ビルドオプション
+options:
+  machineType: 'N1_HIGHCPU_8'
+  logging: CLOUD_LOGGING_ONLY
+
+# 代替変数（Cloud Buildトリガーで設定）
+substitutions:
+  _CLOUD_SQL_CONNECTION_NAME: 'your-project:asia-northeast1:your-instance'
+
+# ビルド成果物
+images:
+  - 'gcr.io/$PROJECT_ID/nippo-app:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/nippo-app:latest'
