@@ -20,9 +20,6 @@ describe('LoginPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (useRouter as any).mockReturnValue(mockRouter);
-    // localStorageとsessionStorageのモック
-    Storage.prototype.setItem = vi.fn();
-    Storage.prototype.getItem = vi.fn();
   });
 
   it('正常系: メールアドレスとパスワードを入力してログインできる', async () => {
