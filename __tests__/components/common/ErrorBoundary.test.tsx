@@ -43,26 +43,34 @@ describe('ErrorBoundary Component', () => {
   })
 
   it('正常系: 再試行ボタンをクリックするとエラーがリセットされる', () => {
+    // エラーをスローするかどうかを制御する変数
+    let shouldThrowError = true
+
+    // 動的にエラーをスローするコンポーネント
+    function DynamicErrorComponent() {
+      if (shouldThrowError) {
+        throw new Error('テストエラー')
+      }
+      return <div>正常なコンポーネント</div>
+    }
+
     const { rerender } = render(
       <ErrorBoundary>
-        <ThrowError shouldThrow={true} />
+        <DynamicErrorComponent />
       </ErrorBoundary>
     )
 
     // エラー画面が表示される
     expect(screen.getByText('予期しないエラーが発生しました')).toBeInTheDocument()
 
+    // エラーを解除
+    shouldThrowError = false
+
     // 再試行ボタンをクリック
     const retryButton = screen.getByRole('button', { name: '再試行' })
     fireEvent.click(retryButton)
 
-    // エラーがリセットされて子コンポーネントが再レンダリングされる
-    rerender(
-      <ErrorBoundary>
-        <ThrowError shouldThrow={false} />
-      </ErrorBoundary>
-    )
-
+    // エラーがリセットされて正常なコンポーネントが表示される
     expect(screen.getByText('正常なコンポーネント')).toBeInTheDocument()
   })
 

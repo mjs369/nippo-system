@@ -10,6 +10,11 @@ export default defineConfig({
     globals: true,
     setupFiles: [path.resolve(__dirname, './vitest.setup.ts')],
     include: ['**/*.{test,spec}.{ts,tsx}'],
+    env: {
+      DATABASE_URL: 'mysql://test:test@localhost:3306/test_db',
+      JWT_SECRET: 'test-secret-key-for-testing',
+      NODE_ENV: 'test',
+    },
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],

@@ -131,15 +131,23 @@ describe('logError Function', () => {
   })
 
   it('正常系: エラーがコンソールに出力される（開発環境）', () => {
+    const originalEnv = process.env.NODE_ENV
+    process.env.NODE_ENV = 'development'
+
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const error = new Error('テストエラー')
 
     logError(error)
 
     expect(consoleSpy).toHaveBeenCalledWith('[Error]', error)
+
+    process.env.NODE_ENV = originalEnv
   })
 
   it('正常系: コンテキスト付きでエラーが出力される', () => {
+    const originalEnv = process.env.NODE_ENV
+    process.env.NODE_ENV = 'development'
+
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const error = new Error('テストエラー')
     const context = { userId: 123, action: 'create' }
@@ -148,6 +156,8 @@ describe('logError Function', () => {
 
     expect(consoleSpy).toHaveBeenCalledWith('[Error]', error)
     expect(consoleSpy).toHaveBeenCalledWith('[Context]', context)
+
+    process.env.NODE_ENV = originalEnv
   })
 })
 

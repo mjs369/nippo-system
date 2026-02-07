@@ -11,7 +11,9 @@ describe('LoadingOverlay Component', () => {
     )
 
     expect(screen.getByRole('status')).toBeInTheDocument()
-    expect(screen.getByText('読み込み中...')).toBeInTheDocument()
+    // スクリーンリーダー用とメッセージ表示の両方があるため、getAllByTextを使用
+    const loadingTexts = screen.getAllByText('読み込み中...')
+    expect(loadingTexts.length).toBeGreaterThan(0)
   })
 
   it('正常系: ローディング中でない場合は子コンポーネントのみ表示', () => {
@@ -36,36 +38,41 @@ describe('LoadingOverlay Component', () => {
   })
 
   it('正常系: fullScreenモードで表示される', () => {
-    render(
+    const { container } = render(
       <LoadingOverlay loading={true} fullScreen>
         <div>コンテンツ</div>
       </LoadingOverlay>
     )
 
-    const overlay = screen.getByRole('status').parentElement
+    // fullScreenの場合は最上位のdivがfixedクラスを持つ
+    const overlay = container.firstChild as HTMLElement
     expect(overlay).toHaveClass('fixed')
   })
 
   it('正常系: blurオプションが機能する', () => {
-    render(
+    const { container } = render(
       <LoadingOverlay loading={true} blur={true}>
         <div>コンテンツ</div>
       </LoadingOverlay>
     )
 
-    const overlay = screen.getByRole('status').parentElement
-    expect(overlay).toHaveClass('backdrop-blur-sm')
+    // blur=trueの場合、オーバーレイdivがbackdrop-blur-smクラスを持つ
+    const relativeDiv = container.firstChild as HTMLElement
+    const overlayDiv = relativeDiv.children[1] as HTMLElement
+    expect(overlayDiv).toHaveClass('backdrop-blur-sm')
   })
 
   it('正常系: カスタムクラス名が適用される', () => {
-    render(
+    const { container } = render(
       <LoadingOverlay loading={true} className="custom-overlay">
         <div>コンテンツ</div>
       </LoadingOverlay>
     )
 
-    const overlay = screen.getByRole('status').parentElement
-    expect(overlay).toHaveClass('custom-overlay')
+    // カスタムクラスはオーバーレイdivに適用される
+    const relativeDiv = container.firstChild as HTMLElement
+    const overlayDiv = relativeDiv.children[1] as HTMLElement
+    expect(overlayDiv).toHaveClass('custom-overlay')
   })
 })
 
