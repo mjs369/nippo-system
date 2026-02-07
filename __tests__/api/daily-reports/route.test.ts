@@ -141,6 +141,93 @@ describe('POST /api/daily-reports', () => {
     expect(data.error.code).toBe('VALIDATION_ERROR');
     expect(data.error.details[0].message).toBe('この日付の日報は既に存在します');
   });
+
+  it('異常系: 不正な日付形式', async () => {
+    const mockUser = { id: 1, name: '山田 太郎', email: 'yamada@example.com', position: '一般' };
+    vi.spyOn(apiHelpers, 'getAuthenticatedUser').mockResolvedValue(mockUser as never);
+
+    const request = new Request('http://localhost/api/daily-reports', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ report_date: 'invalid-date' }),
+    });
+
+    const response = await POST(request as never);
+    const data = await response.json();
+
+    expect(response.status).toBe(422);
+    expect(data.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('境界値: 未来の日付で日報作成', async () => {
+    const mockUser = { id: 1, name: '山田 太郎', email: 'yamada@example.com', position: '一般' };
+    vi.spyOn(apiHelpers, 'getAuthenticatedUser').mockResolvedValue(mockUser as never);
+
+    vi.mocked(prisma.dailyReport.findUnique).mockResolvedValue(null);
+
+    const mockDailyReport = {
+      id: 1,
+      salesId: 1,
+      reportDate: new Date('2027-01-01'),
+      createdAt: new Date('2026-02-01T18:30:00Z'),
+      updatedAt: new Date('2026-02-01T18:30:00Z'),
+      sales: {
+        name: '山田 太郎',
+      },
+    };
+    vi.mocked(prisma.dailyReport.create).mockResolvedValue(mockDailyReport as never);
+
+    const request = new Request('http://localhost/api/daily-reports', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ report_date: '2027-01-01' }),
+    });
+
+    const response = await POST(request as never);
+    const data = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(data).toHaveProperty('id', 1);
+    expect(data).toHaveProperty('report_date', '2027-01-01');
+  });
+
+  it('境界値: 過去の日付で日報作成', async () => {
+    const mockUser = { id: 1, name: '山田 太郎', email: 'yamada@example.com', position: '一般' };
+    vi.spyOn(apiHelpers, 'getAuthenticatedUser').mockResolvedValue(mockUser as never);
+
+    vi.mocked(prisma.dailyReport.findUnique).mockResolvedValue(null);
+
+    const mockDailyReport = {
+      id: 1,
+      salesId: 1,
+      reportDate: new Date('2020-01-01'),
+      createdAt: new Date('2026-02-01T18:30:00Z'),
+      updatedAt: new Date('2026-02-01T18:30:00Z'),
+      sales: {
+        name: '山田 太郎',
+      },
+    };
+    vi.mocked(prisma.dailyReport.create).mockResolvedValue(mockDailyReport as never);
+
+    const request = new Request('http://localhost/api/daily-reports', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ report_date: '2020-01-01' }),
+    });
+
+    const response = await POST(request as never);
+    const data = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(data).toHaveProperty('id', 1);
+    expect(data).toHaveProperty('report_date', '2020-01-01');
+  });
 });
 
 describe('GET /api/daily-reports', () => {
@@ -226,5 +313,234 @@ describe('GET /api/daily-reports', () => {
 
     expect(response.status).toBe(401);
     expect(data.error.code).toBe('UNAUTHORIZED');
+  });
+
+  it('正常系: 部下の日報取得（scope=subordinates）', async () => {
+    const mockUser = {
+      id: 5,
+      name: '佐藤 課長',
+      email: 'sato@example.com',
+      position: '課長',
+    };
+    vi.spyOn(apiHelpers, 'getAuthenticatedUser').mockResolvedValue(mockUser as never);
+
+    // 部下のリスト
+    vi.mocked(prisma.sales.findMany).mockResolvedValue([{ id: 1 }, { id: 2 }] as never);
+
+    vi.mocked(prisma.dailyReport.count).mockResolvedValue(1);
+
+    const mockReports = [
+      {
+        id: 1,
+        salesId: 1,
+        reportDate: new Date('2026-02-01'),
+        createdAt: new Date('2026-02-01T18:30:00Z'),
+        updatedAt: new Date('2026-02-01T18:30:00Z'),
+        sales: { name: '山田 太郎' },
+        visitRecords: [],
+        problems: [],
+        plans: [],
+      },
+    ];
+    vi.mocked(prisma.dailyReport.findMany).mockResolvedValue(mockReports as never);
+
+    const request = new Request('http://localhost/api/daily-reports?scope=subordinates');
+
+    const response = await GET(request as never);
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.data).toHaveLength(1);
+    expect(data.data[0].sales_name).toBe('山田 太郎');
+  });
+
+  it('正常系: 日付範囲でフィルタリング', async () => {
+    const mockUser = { id: 1, name: '山田 太郎', email: 'yamada@example.com', position: '一般' };
+    vi.spyOn(apiHelpers, 'getAuthenticatedUser').mockResolvedValue(mockUser as never);
+
+    vi.mocked(prisma.dailyReport.count).mockResolvedValue(1);
+
+    const mockReports = [
+      {
+        id: 1,
+        salesId: 1,
+        reportDate: new Date('2026-02-01'),
+        createdAt: new Date('2026-02-01T18:30:00Z'),
+        updatedAt: new Date('2026-02-01T18:30:00Z'),
+        sales: { name: '山田 太郎' },
+        visitRecords: [],
+        problems: [],
+        plans: [],
+      },
+    ];
+    vi.mocked(prisma.dailyReport.findMany).mockResolvedValue(mockReports as never);
+
+    const request = new Request(
+      'http://localhost/api/daily-reports?report_date_from=2026-02-01&report_date_to=2026-02-28'
+    );
+
+    const response = await GET(request as never);
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.data).toHaveLength(1);
+  });
+
+  it('正常系: 営業担当者でフィルタリング', async () => {
+    const mockUser = {
+      id: 5,
+      name: '佐藤 課長',
+      email: 'sato@example.com',
+      position: '課長',
+    };
+    vi.spyOn(apiHelpers, 'getAuthenticatedUser').mockResolvedValue(mockUser as never);
+    vi.spyOn(apiHelpers, 'canAccessAllReports').mockReturnValue(false);
+
+    vi.mocked(prisma.dailyReport.count).mockResolvedValue(1);
+
+    const mockReports = [
+      {
+        id: 1,
+        salesId: 1,
+        reportDate: new Date('2026-02-01'),
+        createdAt: new Date('2026-02-01T18:30:00Z'),
+        updatedAt: new Date('2026-02-01T18:30:00Z'),
+        sales: { name: '山田 太郎' },
+        visitRecords: [],
+        problems: [],
+        plans: [],
+      },
+    ];
+    vi.mocked(prisma.dailyReport.findMany).mockResolvedValue(mockReports as never);
+
+    const request = new Request('http://localhost/api/daily-reports?sales_id=1');
+
+    const response = await GET(request as never);
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.data[0].sales_id).toBe(1);
+  });
+
+  it('正常系: 顧客でフィルタリング', async () => {
+    const mockUser = { id: 1, name: '山田 太郎', email: 'yamada@example.com', position: '一般' };
+    vi.spyOn(apiHelpers, 'getAuthenticatedUser').mockResolvedValue(mockUser as never);
+
+    vi.mocked(prisma.dailyReport.count).mockResolvedValue(1);
+
+    const mockReports = [
+      {
+        id: 1,
+        salesId: 1,
+        reportDate: new Date('2026-02-01'),
+        createdAt: new Date('2026-02-01T18:30:00Z'),
+        updatedAt: new Date('2026-02-01T18:30:00Z'),
+        sales: { name: '山田 太郎' },
+        visitRecords: [{ id: 1 }],
+        problems: [],
+        plans: [],
+      },
+    ];
+    vi.mocked(prisma.dailyReport.findMany).mockResolvedValue(mockReports as never);
+
+    const request = new Request('http://localhost/api/daily-reports?customer_id=10');
+
+    const response = await GET(request as never);
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.data).toHaveLength(1);
+  });
+
+  it('正常系: ページネーション', async () => {
+    const mockUser = { id: 1, name: '山田 太郎', email: 'yamada@example.com', position: '一般' };
+    vi.spyOn(apiHelpers, 'getAuthenticatedUser').mockResolvedValue(mockUser as never);
+
+    vi.mocked(prisma.dailyReport.count).mockResolvedValue(25);
+    vi.mocked(prisma.dailyReport.findMany).mockResolvedValue([] as never);
+
+    const request = new Request('http://localhost/api/daily-reports?page=2&per_page=10');
+
+    const response = await GET(request as never);
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.pagination.current_page).toBe(2);
+    expect(data.pagination.per_page).toBe(10);
+    expect(data.pagination.total_pages).toBe(3);
+    expect(data.pagination.total_count).toBe(25);
+  });
+
+  it('正常系: ソート順序指定（昇順）', async () => {
+    const mockUser = { id: 1, name: '山田 太郎', email: 'yamada@example.com', position: '一般' };
+    vi.spyOn(apiHelpers, 'getAuthenticatedUser').mockResolvedValue(mockUser as never);
+
+    vi.mocked(prisma.dailyReport.count).mockResolvedValue(2);
+
+    const mockReports = [
+      {
+        id: 2,
+        salesId: 1,
+        reportDate: new Date('2026-01-31'),
+        createdAt: new Date('2026-01-31T19:00:00Z'),
+        updatedAt: new Date('2026-01-31T19:00:00Z'),
+        sales: { name: '山田 太郎' },
+        visitRecords: [],
+        problems: [],
+        plans: [],
+      },
+      {
+        id: 1,
+        salesId: 1,
+        reportDate: new Date('2026-02-01'),
+        createdAt: new Date('2026-02-01T18:30:00Z'),
+        updatedAt: new Date('2026-02-01T18:30:00Z'),
+        sales: { name: '山田 太郎' },
+        visitRecords: [],
+        problems: [],
+        plans: [],
+      },
+    ];
+    vi.mocked(prisma.dailyReport.findMany).mockResolvedValue(mockReports as never);
+
+    const request = new Request('http://localhost/api/daily-reports?sort=report_date&order=asc');
+
+    const response = await GET(request as never);
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.data).toHaveLength(2);
+    expect(data.data[0].report_date).toBe('2026-01-31');
+    expect(data.data[1].report_date).toBe('2026-02-01');
+  });
+
+  it('正常系: コメントありの日報を識別', async () => {
+    const mockUser = { id: 1, name: '山田 太郎', email: 'yamada@example.com', position: '一般' };
+    vi.spyOn(apiHelpers, 'getAuthenticatedUser').mockResolvedValue(mockUser as never);
+
+    vi.mocked(prisma.dailyReport.count).mockResolvedValue(1);
+
+    const mockReports = [
+      {
+        id: 1,
+        salesId: 1,
+        reportDate: new Date('2026-02-01'),
+        createdAt: new Date('2026-02-01T18:30:00Z'),
+        updatedAt: new Date('2026-02-01T18:30:00Z'),
+        sales: { name: '山田 太郎' },
+        visitRecords: [],
+        problems: [{ id: 1, comments: [{ id: 1 }] }],
+        plans: [],
+      },
+    ];
+    vi.mocked(prisma.dailyReport.findMany).mockResolvedValue(mockReports as never);
+
+    const request = new Request('http://localhost/api/daily-reports?scope=own');
+
+    const response = await GET(request as never);
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.data[0].has_comments).toBe(true);
   });
 });
