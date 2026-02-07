@@ -1,7 +1,28 @@
 import type { Page } from '@playwright/test';
 
 /**
+ * テスト用の認証情報
+ */
+export const TEST_USERS = {
+  // 上長（課長）アカウント
+  manager: {
+    email: 'sato-k@example.com',
+    password: 'password123',
+    name: '佐藤 課長',
+  },
+  // 一般営業アカウント
+  sales: {
+    email: 'yamada@example.com',
+    password: 'password123',
+    name: '山田 太郎',
+  },
+};
+
+/**
  * ログインヘルパー関数
+ * @param page Playwrightのページオブジェクト
+ * @param email メールアドレス
+ * @param password パスワード
  */
 export async function login(page: Page, email: string, password: string) {
   await page.goto('/login');
@@ -19,6 +40,7 @@ export async function login(page: Page, email: string, password: string) {
 
 /**
  * ログアウトヘルパー関数
+ * @param page Playwrightのページオブジェクト
  */
 export async function logout(page: Page) {
   // ログアウトボタンをクリック
