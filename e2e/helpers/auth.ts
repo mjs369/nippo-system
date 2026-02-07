@@ -19,34 +19,36 @@ export const TEST_USERS = {
 };
 
 /**
- * ログイン処理を実行
+ * ログインヘルパー関数
  * @param page Playwrightのページオブジェクト
  * @param email メールアドレス
  * @param password パスワード
  */
 export async function login(page: Page, email: string, password: string) {
-  // ログイン画面に遷移
   await page.goto('/login');
 
   // メールアドレスとパスワードを入力
-  await page.fill('input[name="email"]', email);
-  await page.fill('input[name="password"]', password);
+  await page.fill('input[name="email"], input[type="email"]', email);
+  await page.fill('input[name="password"], input[type="password"]', password);
 
   // ログインボタンをクリック
   await page.click('button[type="submit"]');
 
-  // 日報一覧画面への遷移を待つ
-  await page.waitForURL('/daily-reports');
+  // ログイン成功を待つ
+  await page.waitForURL(/\/daily-reports/);
 }
 
 /**
- * ログアウト処理を実行
+ * ログアウトヘルパー関数
  * @param page Playwrightのページオブジェクト
  */
 export async function logout(page: Page) {
   // ログアウトボタンをクリック
-  await page.click('button:has-text("ログアウト")');
+  const logoutButton = page.getByRole('button', { name: /ログアウト|Logout/ });
+  if (await logoutButton.isVisible()) {
+    await logoutButton.click();
+  }
 
-  // ログイン画面への遷移を待つ
-  await page.waitForURL('/login');
+  // ログイン画面に遷移することを確認
+  await page.waitForURL(/\/login/);
 }
